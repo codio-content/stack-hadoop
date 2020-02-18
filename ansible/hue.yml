@@ -1,0 +1,64 @@
+- hosts: localhost
+  become: true
+  tasks:
+    - name: install dependencies
+      apt:
+        pkg:
+          - libsqlite3-dev 
+          - python-simplejson 
+          - python-setuptools  
+          - python-dev 
+          - libmysqlclient-dev
+          - libsasl2-modules-gssapi-mit
+          - libsasl2-dev
+          - libxslt-dev 
+          - libxml2-dev 
+          - libgmp3-dev
+          - libssl-dev
+          - libldap2-dev
+    
+    - name: HUE download
+      unarchive:
+        src: https://cdn.gethue.com/downloads/hue-4.6.0.tgz
+        dest: /opt/
+        owner: codio
+        group: codio
+        remote_src: yes
+    - name: Change file ownership of /opt
+      file:
+        path: /opt
+        owner: codio
+        group: codio
+    
+    - name: compile HUE
+      shell: |
+        cd /opt/hue-4.6.0
+        PREFIX=/opt make install
+      become: true
+      become_user: codio
+      
+    - name: Create systemd file
+      copy:
+        content: |
+          [Unit]
+          Description=HUE
+
+          [Service]
+          Type=simple
+          ExecStart=/opt/hue/build/env/bin/supervisor
+          User=codio
+          Group=codio
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/hue.service
+        group: root
+        owner: root
+        mode: 0644
+        
+    - name: enable hue
+      systemd:
+        name: hue
+        enabled: yes
+        masked: no
+        state: started

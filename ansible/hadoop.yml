@@ -1,0 +1,61 @@
+---
+- hosts: localhost
+  become: true
+  tasks:
+    - name: install dependencies
+      apt:
+        pkg:
+          - pdsh
+          - ssh
+          
+    - name: Ensures /opt/ dir exists
+      file:
+        path: /opt/
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    
+    - name: Download and unarchive hadoop
+      unarchive:
+        src: http://archive.apache.org/dist/hadoop/common/hadoop-3.1.2/hadoop-3.1.2.tar.gz
+        dest: /opt/
+        owner: codio
+        group: codio
+        remote_src: yes
+    
+    - name: Download and unarchive hive
+      unarchive:
+        src: http://apache.mirror.anlx.net/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
+        dest: /opt/
+        owner: codio
+        group: codio
+        remote_src: yes
+
+    - name: Download and unarchive impala
+      unarchive:
+        src: http://mirrors.ukfast.co.uk/sites/ftp.apache.org/impala/3.3.0/apache-impala-3.3.0.tar.gz
+        dest: /opt/
+        owner: codio
+        group: codio
+        remote_src: yes
+
+    - name: Create ENV file
+      copy:
+        content: |
+          export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
+          export HADOOP_HOME="/opt/hadoop-3.1.2"
+          export HIVE_HOME="/opt/apache-hive-3.1.2-bin"
+          export IMPALA_HOME="/opt/apache-impala-3.3.0"
+          export PATH="/opt/hadoop-3.1.2/bin:/opt/apache-hive-3.1.2-bin/bin:${PATH}"
+        dest: /etc/profile.d/codio-hadoop.sh
+        group: root
+        mode: 0755
+
+    -  name: compile impala
+       shell: |
+         . /etc/profile.d/codio-hadoop.sh
+         cd /opt/apache-impala-3.3.0/
+         bin/bootstrap_build.sh
+       args:
+        executable: /bin/bash
